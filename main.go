@@ -11,15 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	_ "embed"
-
 	"github.com/disintegration/imaging"
 )
 
-//go:embed commit.txt
-var gitCommit string // Git hash, set by build pipeline
-//go:embed version.txt
-var buildVersion string // human readable version, set by build pipeline
+var gitCommit string = "HEAD"     // Git hash, set by build pipeline
+var buildVersion string = "0.0.0" // human readable version, set by build pipeline
 var port = "3000"
 
 func main() {

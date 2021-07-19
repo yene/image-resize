@@ -1,6 +1,6 @@
 # Resize image
 
-Small app to resize single image
+Small web server to resize single image.
 
 ## TODO
 - [x] serve as webserver

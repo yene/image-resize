@@ -1,0 +1,80 @@
+# manually trigger the action to create a release draft
+name: Draft Release
+
+env:
+  NAME: imageresize
+  INPUT_VERSION: ${{ github.event.inputs.version }}
+
+# manually trigger in the actions tab
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version"
+        required: true
+        default: "0.1.0"
+
+jobs:
+  build:
+    name: Draft Release
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.16
+
+      - name: Debug
+        run: |
+          go version
+          timedatectl
+          echo $INPUT_VERSION
+          echo $GITHUB_SHA
+      - name: Build Linux
+        run: env GOOS=linux GOARCH=amd64 go build -ldflags "-X main.buildVersion=$INPUT_VERSION -X main.gitCommit=$GITHUB_SHA" -o ${NAME}-linux
+      - name: UPX Linux
+        uses: crazy-max/ghaction-upx@v1.3.3
+        with:
+          file: ${{env.NAME}}-linux
+
+      - name: Build Linux arm
+        # GOARM=6 (Raspberry Pi A, A+, B, B+, Zero) GOARM=7 (Raspberry Pi 2, 3)
+        run: env GOARM=6 GOOS=linux GOARCH=arm go build -ldflags "-X main.buildVersion=$INPUT_VERSION -X main.gitCommit=$GITHUB_SHA" -o ${NAME}-linux-arm
+      - name: UPX Linux arm
+        uses: crazy-max/ghaction-upx@v1.3.3
+        with:
+          file: ${{env.NAME}}-linux-arm
+
+      - name: Build macOS amd64
+        run: env GOOS=darwin GOARCH=amd64 go build -ldflags "-X main.buildVersion=$INPUT_VERSION -X main.gitCommit=$GITHUB_SHA" -o ${NAME}-macos
+      - name: UPX macOS amd64
+        uses: crazy-max/ghaction-upx@v1.3.3
+        with:
+          file: ${{ env.NAME }}-macos
+
+      - name: Build macOS arm64
+        run: env GOOS=darwin GOARCH=arm64 go build -ldflags "-X main.buildVersion=$INPUT_VERSION -X main.gitCommit=$GITHUB_SHA" -o ${NAME}-macos-arm
+      - name: UPX macOS arm64
+        uses: crazy-max/ghaction-upx@v1.3.3
+        with:
+          file: ${{ env.NAME }}-macos-arm
+
+      - name: Build Windows
+        run: env GOOS=windows GOARCH=amd64 go build -ldflags "-X main.buildVersion=$INPUT_VERSION -X main.gitCommit=$GITHUB_SHA" -o ${NAME}-windows.exe
+      - name: UPX Windows
+        uses: crazy-max/ghaction-upx@v1.3.3
+        with:
+          file: ${{ env.NAME }}-windows.exe
+
+        # https://github.com/ncipollo/release-action
+      - name: Create Release
+        id: create_release
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: "${{ env.NAME }}-*"
+          tag: v${{ github.event.inputs.version }}
+          name: v${{ github.event.inputs.version }}
+          body: Bugfixes and stability improvements.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          draft: true
