@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Resize to A5</title>
+  <link rel="stylesheet" href="/fa/css/all.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css">
+  <link rel="stylesheet" href="/style.css">
+</head>
+
+<body>
+  <section class="section">
+    <div class="container">
+      <h1 class="title">
+        Convert Image to A5
+      </h1>
+      <p class="subtitle">
+        Image will not be stored on server.
+      </p>
+      <form action="upload.php" method="post" enctype="multipart/form-data">
+        <div class="file is-boxed">
+          <label class="file-label">
+            <input onchange="this.form.submit()" class="file-input" type="file" name="myFile">
+            <span class="file-cta">
+              <span class="file-icon">
+                <i class="fas fa-upload"></i>
+              </span>
+              <span class="file-label">
+                Choose a file…
+              </span>
+            </span>
+          </label>
+        </div>
+      </form>
+    </div>
+  </section>
+</body>
+
+</html>

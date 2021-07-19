@@ -1,14 +1,50 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
+
+	_ "embed"
 
 	"github.com/disintegration/imaging"
 )
 
+//go:embed commit.txt
+var gitCommit string // Git hash, set by build pipeline
+//go:embed version.txt
+var buildVersion string // human readable version, set by build pipeline
+var port = "3000"
+
 func main() {
+	fs := http.FileServer(http.Dir("./public"))
+	http.Handle("/", fs)
+	http.HandleFunc("/upload.php", uploadFile)
+	http.HandleFunc("/test", test)
+	// http.Handle("/public/", http.StripPrefix("/public/", fs))
+	log.Println(buildVersion, "listening on port", port)
+	http.ListenAndServe(":"+port, nil)
+}
+
+func test(w http.ResponseWriter, r *http.Request) {
+	file, err := os.Open("tests/input.jpg")
+	var ior io.Reader = file
+	if err != nil {
+		log.Println("file not found")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer file.Close()
+	convertImage(w, &ior)
+}
+
+func convertImage(w io.Writer, r *io.Reader) error {
 	// config
 	autorotate := true
 
@@ -17,12 +53,13 @@ func main() {
 	targetWidth := 2480
 	targetRatio := float64(targetWidth) / float64(targetHeight)
 
-	src, err := imaging.Open("tests/input.jpg")
+	src, err := imaging.Decode(*r)
 	srcWidth := src.Bounds().Max.X
 	srcHeight := src.Bounds().Max.Y
 	srcRatio := float64(srcWidth) / float64(srcHeight)
 	if err != nil {
-		log.Fatalf("failed to open image: %v", err)
+		log.Printf("failed to decode image: %v", err)
+		return err
 	}
 	dst := imaging.New(targetWidth, targetHeight, color.White)
 
@@ -45,9 +82,37 @@ func main() {
 		dst = imaging.Paste(dst, img1, image.Pt(offsetLeft, 0))
 	}
 
-	// Save the resulting image as JPEG.
-	err = imaging.Save(dst, "tests/out_example.jpg")
+	err = imaging.Encode(w, dst, imaging.JPEG)
 	if err != nil {
-		log.Fatalf("failed to save image: %v", err)
+		log.Printf("failed to save image: %v", err)
+		return err
 	}
+	return nil
+}
+
+func uploadFile(w http.ResponseWriter, r *http.Request) {
+	// Parse our multipart form, 10 << 20 specifies a maximum upload of 10 MB files.
+	r.ParseMultipartForm(10 << 20)
+	// FormFile returns the first file for the given key `myFile` it also returns the FileHeader so we can get the Filename, the Header and the size of the file
+	file, handler, err := r.FormFile("myFile")
+	if err != nil {
+		fmt.Println("Error Retrieving the File", err)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
+		return
+	}
+	defer file.Close()
+	//fmt.Printf("Uploaded File: %+v\n", handler.Filename)
+	//fmt.Printf("File Size: %+v\n", handler.Size)
+
+	filename := fileNameWithoutExtTrimSuffix(handler.Filename)
+	filename = filename + "_a5.jpg"
+	w.Header().Set("Content-Type", "image/jpeg")
+	// attachment offers the file to download, inline shows it in browser
+	w.Header().Add("Content-Disposition", "inline; filename="+filename)
+	var ior io.Reader = file
+	convertImage(w, &ior)
+}
+
+func fileNameWithoutExtTrimSuffix(fileName string) string {
+	return strings.TrimSuffix(fileName, filepath.Ext(fileName))
 }
