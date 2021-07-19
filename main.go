@@ -1,10 +1,12 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"image"
 	"image/color"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
@@ -18,11 +20,15 @@ var gitCommit string = "HEAD"     // Git hash, set by build pipeline
 var buildVersion string = "0.0.0" // human readable version, set by build pipeline
 var port = "3000"
 
+//go:embed public
+var publicFolder embed.FS
+
 func main() {
-	fs := http.FileServer(http.Dir("./public"))
-	http.Handle("/", fs)
+	fsys, _ := fs.Sub(publicFolder, "public")
+	http.Handle("/", http.FileServer(http.FS(fsys)))
 	http.HandleFunc("/upload.php", uploadFile)
 	http.HandleFunc("/test", test)
+	// fs := http.FileServer(http.Dir("./public"))
 	// http.Handle("/public/", http.StripPrefix("/public/", fs))
 	log.Println(buildVersion, "listening on port", port)
 	http.ListenAndServe(":"+port, nil)
