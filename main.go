@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/disintegration/imaging"
+	_ "golang.org/x/image/webp"
 )
 
 var gitCommit string = "HEAD"     // Git hash, set by build pipeline
@@ -28,12 +29,18 @@ func main() {
 	http.Handle("/", http.FileServer(http.FS(fsys)))
 	http.HandleFunc("/upload.php", uploadFile)
 	http.HandleFunc("/test", test)
+	http.HandleFunc("/health/ready", healthCheck)
 	// fs := http.FileServer(http.Dir("./public"))
 	// http.Handle("/public/", http.StripPrefix("/public/", fs))
 	log.Println(buildVersion, "listening on port", port)
 	http.ListenAndServe(":"+port, nil)
 }
 
+// This will get called very often, avoid computation and logging here.
+// This is to inform the ingress that we are ready to receive traffic.
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Ready"))
+}
 func test(w http.ResponseWriter, r *http.Request) {
 	file, err := os.Open("tests/input.jpg")
 	var ior io.Reader = file
